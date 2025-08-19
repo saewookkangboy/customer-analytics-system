@@ -13,6 +13,26 @@
 
 ## 🚀 빠른 시작
 
+### 듀얼 시스템 (React + Streamlit) - 로컬 환경
+
+**모든 서비스를 한 번에 시작하는 가장 쉬운 방법:**
+
+```bash
+# 시스템 시작
+./start-dual.sh
+
+# 시스템 중지
+./stop-dual.sh
+
+# 상태 확인
+./status-dual.sh
+```
+
+**접속 정보:**
+- 📊 **React 대시보드**: http://localhost:8100
+- 🐍 **Streamlit 앱**: http://localhost:8501
+- 🔌 **백엔드 API**: http://localhost:3001
+
 ### Streamlit Cloud 배포 (권장)
 
 1. **GitHub 저장소 클론**
@@ -71,17 +91,42 @@
 
 ## 📊 사용 방법
 
-1. **대시보드 접속**
-   - 브라우저에서 `http://localhost:8100` (React) 또는 `http://localhost:8501` (Streamlit) 접속
+### 듀얼 시스템 사용법
 
-2. **데이터 생성**
+1. **시스템 시작**
+   ```bash
+   ./start-dual.sh
+   ```
+
+2. **대시보드 접속**
+   - **React 버전**: http://localhost:8100 (고급 UI/UX)
+   - **Streamlit 버전**: http://localhost:8501 (빠른 분석)
+
+3. **데이터 생성**
    - 관리자 패널에서 시나리오 선택
    - 이벤트 기록 또는 모의 데이터 생성
 
-3. **분석 확인**
+4. **분석 확인**
    - 실시간으로 대시보드 데이터 확인
    - 카테고리별 필터링 사용
    - 날짜 범위 설정
+
+### React vs Streamlit 비교
+
+| 기능 | React 버전 | Streamlit 버전 |
+|------|------------|----------------|
+| **UI/UX** | 고급 인터페이스, 반응형 디자인 | 간단하고 직관적 |
+| **실시간 업데이트** | ✅ WebSocket 지원 | ✅ 자동 새로고침 |
+| **복잡한 인터랙션** | ✅ 드래그 앤 드롭, 애니메이션 | ⚠️ 기본 인터랙션 |
+| **관리자 패널** | ✅ 완전한 관리 기능 | ⚠️ 제한적 |
+| **데이터 분석** | ✅ 고급 차트, 필터링 | ✅ 빠른 프로토타이핑 |
+| **배포** | ⚠️ 복잡한 설정 | ✅ 클라우드 배포 용이 |
+| **개발 속도** | ⚠️ 느림 | ✅ 빠름 |
+
+### 사용 시나리오
+
+- **React 버전**: 고객용 대시보드, 복잡한 분석, 프로덕션 환경
+- **Streamlit 버전**: 내부 분석, 빠른 인사이트, 프로토타이핑
 
 ## 🏗️ 프로젝트 구조
 
@@ -107,6 +152,10 @@ customer-analytics-system/
 ├── docker/               # Docker 설정
 ├── app.py                # Streamlit Cloud용 메인 파일
 ├── requirements.txt      # Streamlit Cloud용 의존성
+├── start-dual.sh         # 듀얼 시스템 시작 스크립트
+├── stop-dual.sh          # 듀얼 시스템 중지 스크립트
+├── status-dual.sh        # 시스템 상태 확인 스크립트
+├── logs/                 # 로그 파일 디렉토리
 └── README.md
 ```
 
