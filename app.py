@@ -100,9 +100,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 환경 설정
-is_local = os.getenv('STREAMLIT_CLOUD') != 'true'
-API_BASE_URL = "http://localhost:3001/api" if is_local else None
-USE_MOCK_DATA = not is_local
+# Streamlit Cloud 환경 감지
+is_streamlit_cloud = os.getenv('STREAMLIT_CLOUD') == 'true' or os.getenv('STREAMLIT_SHARING_MODE') == 'streamlit'
+
+if is_streamlit_cloud:
+    # Streamlit Cloud 환경에서는 모의 데이터 사용
+    is_local = False
+    API_BASE_URL = None
+    USE_MOCK_DATA = True
+else:
+    # 로컬 환경에서는 실제 API 사용
+    is_local = True
+    API_BASE_URL = "http://localhost:3001/api"
+    USE_MOCK_DATA = False
 
 # 세션 상태 초기화
 if 'selected_category' not in st.session_state:
@@ -264,7 +274,8 @@ def generate_mock_category_metrics(category: str = 'all') -> Dict[str, Any]:
 # API 호출 함수
 def fetch_api_data(endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
     """API 데이터 가져오기"""
-    if USE_MOCK_DATA:
+    # Streamlit Cloud 환경에서는 항상 모의 데이터 사용
+    if is_streamlit_cloud:
         # 모의 데이터 반환
         if 'overview' in endpoint:
             return {'success': True, 'data': generate_mock_overview(params.get('category', 'all') if params else 'all')}
@@ -281,7 +292,7 @@ def fetch_api_data(endpoint: str, params: Dict[str, Any] = None) -> Dict[str, An
         else:
             return {'success': False, 'error': 'Unknown endpoint'}
     
-    # 실제 API 호출
+    # 로컬 환경에서는 실제 API 호출
     try:
         url = f"{API_BASE_URL}/{endpoint}"
         response = requests.get(url, params=params, timeout=10)
@@ -615,12 +626,12 @@ def sidebar():
     st.sidebar.title("🎯 고객 분석 시스템")
     
     # 시스템 상태 표시
-    if is_local:
-        st.sidebar.success("🖥️ 로컬 환경")
-        st.sidebar.info("🔗 실제 API 연결")
-    else:
+    if is_streamlit_cloud:
         st.sidebar.success("☁️ Streamlit Cloud 모드")
         st.sidebar.info("🔄 모의 데이터 사용 중")
+    else:
+        st.sidebar.success("🖥️ 로컬 환경")
+        st.sidebar.info("🔗 실제 API 연결")
     
     st.sidebar.markdown("---")
     
