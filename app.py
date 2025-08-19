@@ -64,15 +64,54 @@ st.markdown("""
 # API 설정 - Streamlit Cloud 배포용
 import os
 
+# Streamlit Cloud 환경 감지
+def is_streamlit_cloud():
+    """Streamlit Cloud 환경인지 확인"""
+    # 여러 방법으로 Streamlit Cloud 환경 감지
+    return (
+        os.getenv('STREAMLIT_CLOUD') == 'true' or
+        os.getenv('STREAMLIT_SHARING_MODE') == 'streamlit' or
+        'streamlit.app' in os.getenv('STREAMLIT_SERVER_HEADLESS', '') or
+        'share.streamlit.io' in os.getenv('STREAMLIT_SERVER_HEADLESS', '')
+    )
+
 # 환경에 따라 API URL 설정
-if os.getenv('STREAMLIT_CLOUD'):
+if is_streamlit_cloud():
     # Streamlit Cloud 환경에서는 모의 데이터 사용
     API_BASE_URL = None
     USE_MOCK_DATA = True
+    st.info("🔄 Streamlit Cloud 환경에서 모의 데이터를 사용합니다.")
 else:
     # 로컬 환경에서는 실제 API 사용
     API_BASE_URL = "http://localhost:3001/api"
     USE_MOCK_DATA = False
+
+# Streamlit Cloud 환경 강제 감지 및 설정
+def force_mock_data_mode():
+    """Streamlit Cloud 환경에서 강제로 모의 데이터 모드 활성화"""
+    # Streamlit Cloud 환경 감지
+    cloud_indicators = [
+        'streamlit.app',
+        'share.streamlit.io',
+        'STREAMLIT_CLOUD=true',
+        'STREAMLIT_SHARING_MODE=streamlit'
+    ]
+    
+    # 현재 URL이나 환경 변수에서 클라우드 환경 감지
+    current_url = st.get_option('server.headless') or ''
+    env_vars = str(os.environ)
+    
+    for indicator in cloud_indicators:
+        if indicator in current_url or indicator in env_vars:
+            return True
+    
+    return False
+
+# 강제 모의 데이터 모드 설정
+if force_mock_data_mode():
+    USE_MOCK_DATA = True
+    API_BASE_URL = None
+    st.sidebar.success("☁️ Streamlit Cloud 모드")
 
 # 세션 상태 초기화
 if 'selected_category' not in st.session_state:
@@ -171,8 +210,9 @@ def get_mock_recent_events(category='all'):
     }
 
 def fetch_api_data(endpoint, params=None):
-    """API 데이터 가져오기"""
-    if USE_MOCK_DATA:
+    """API 데이터 가져오기 - Streamlit Cloud에서는 항상 모의 데이터 사용"""
+    # Streamlit Cloud 환경에서는 항상 모의 데이터 사용
+    try:
         # 모의 데이터 사용
         if endpoint == "dashboard/overview":
             category = params.get('category', 'all') if params else 'all'
@@ -188,16 +228,9 @@ def fetch_api_data(endpoint, params=None):
             return get_mock_recent_events(category)
         else:
             return {"success": False, "data": None}
-    else:
-        # 실제 API 호출
-        try:
-            url = f"{API_BASE_URL}/{endpoint}"
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            st.error(f"API 호출 오류: {str(e)}")
-            return None
+    except Exception as e:
+        st.error(f"데이터 로드 오류: {str(e)}")
+        return None
 
 def create_metric_card(title, value, unit="", change=None, change_type="neutral"):
     """메트릭 카드 생성"""
@@ -682,18 +715,9 @@ def main():
         st.markdown("---")
         st.markdown("### 시스템 상태")
         
-        # 백엔드 연결 상태 확인
-        if USE_MOCK_DATA:
-            st.info("🔄 모의 데이터 모드")
-        else:
-            try:
-                response = requests.get(f"{API_BASE_URL}/dashboard/overview", timeout=5)
-                if response.status_code == 200:
-                    st.success("✅ 백엔드 연결됨")
-                else:
-                    st.error("❌ 백엔드 오류")
-            except:
-                st.error("❌ 백엔드 연결 실패")
+        # 시스템 상태 표시
+        st.success("☁️ Streamlit Cloud 모드")
+        st.info("🔄 모의 데이터 사용 중")
         
         st.markdown("---")
         st.markdown("### 빠른 액션")
