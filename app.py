@@ -99,29 +99,20 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 환경 설정
-# Streamlit Cloud 환경 감지 (더 강력한 감지)
-is_streamlit_cloud = (
-    os.getenv('STREAMLIT_CLOUD') == 'true' or 
-    os.getenv('STREAMLIT_SHARING_MODE') == 'streamlit' or
-    'streamlit.app' in os.getenv('STREAMLIT_SERVER_HEADLESS', '') or
-    'share.streamlit.io' in os.getenv('STREAMLIT_SERVER_HEADLESS', '') or
-    os.getenv('STREAMLIT_SERVER_PORT') == '8501'
-)
+# 환경 설정 - Streamlit Cloud에서는 항상 모의 데이터 사용
+def is_streamlit_cloud_environment():
+    """Streamlit Cloud 환경인지 확인"""
+    cloud_indicators = [
+        os.getenv('STREAMLIT_CLOUD') == 'true',
+        os.getenv('STREAMLIT_SHARING_MODE') == 'streamlit',
+        'streamlit.app' in os.getenv('STREAMLIT_SERVER_HEADLESS', ''),
+        'share.streamlit.io' in os.getenv('STREAMLIT_SERVER_HEADLESS', ''),
+        os.getenv('STREAMLIT_SERVER_PORT') == '8501'
+    ]
+    return any(cloud_indicators)
 
-# 강제로 Streamlit Cloud 환경 감지 (안전을 위해)
-if is_streamlit_cloud:
-    # Streamlit Cloud 환경에서는 모의 데이터 사용
-    is_local = False
-    API_BASE_URL = None
-    USE_MOCK_DATA = True
-    print("🌐 Streamlit Cloud 환경 감지됨 - 모의 데이터 사용")
-else:
-    # 로컬 환경에서는 실제 API 사용
-    is_local = True
-    API_BASE_URL = "http://localhost:3001/api"
-    USE_MOCK_DATA = False
-    print("🖥️ 로컬 환경 감지됨 - 실제 API 사용")
+# 환경 감지
+IS_STREAMLIT_CLOUD = is_streamlit_cloud_environment()
 
 # 세션 상태 초기화
 if 'selected_category' not in st.session_state:
@@ -280,52 +271,21 @@ def generate_mock_category_metrics(category: str = 'all') -> Dict[str, Any]:
             'average_conversion_rate': round(random.uniform(5.0, 12.0), 1)
         }
 
-# API 호출 함수
-def fetch_api_data(endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
-    """API 데이터 가져오기"""
-    # Streamlit Cloud 환경에서는 항상 모의 데이터 사용
-    if is_streamlit_cloud:
-        # 모의 데이터 반환
-        if 'overview' in endpoint:
-            return {'success': True, 'data': generate_mock_overview(params.get('category', 'all') if params else 'all')}
-        elif 'funnels' in endpoint:
-            return {'success': True, 'data': generate_mock_funnel_data(params.get('category', 'all') if params else 'all')}
-        elif 'kpi-trends' in endpoint:
-            return {'success': True, 'data': generate_mock_kpi_trends(params.get('category', 'all') if params else 'all')}
-        elif 'recent-events' in endpoint:
-            return {'success': True, 'data': generate_mock_recent_events(params.get('category', 'all') if params else 'all')}
-        elif 'scenario-performance' in endpoint:
-            return {'success': True, 'data': generate_mock_scenario_performance(params.get('category', 'all') if params else 'all')}
-        elif 'category-metrics' in endpoint:
-            return {'success': True, 'data': generate_mock_category_metrics(params.get('category', 'all') if params else 'all')}
-        else:
-            return {'success': False, 'error': 'Unknown endpoint'}
-    
-    # 로컬 환경에서만 실제 API 호출 시도
-    if is_local and API_BASE_URL:
-        try:
-            url = f"{API_BASE_URL}/{endpoint}"
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            return {'success': True, 'data': response.json()}
-        except Exception as e:
-            st.error(f"API 호출 오류: {str(e)}")
-            # API 호출 실패 시 모의 데이터로 폴백
-            pass  # 에러 메시지만 표시하고 모의 데이터로 계속 진행
-    
-    # 기본적으로 모의 데이터 반환 (Streamlit Cloud 또는 API 호출 실패 시)
+# 데이터 가져오기 함수 - 항상 모의 데이터 사용
+def fetch_data(endpoint: str, category: str = 'all') -> Dict[str, Any]:
+    """데이터 가져오기 - 항상 모의 데이터 사용"""
     if 'overview' in endpoint:
-        return {'success': True, 'data': generate_mock_overview(params.get('category', 'all') if params else 'all')}
+        return {'success': True, 'data': generate_mock_overview(category)}
     elif 'funnels' in endpoint:
-        return {'success': True, 'data': generate_mock_funnel_data(params.get('category', 'all') if params else 'all')}
+        return {'success': True, 'data': generate_mock_funnel_data(category)}
     elif 'kpi-trends' in endpoint:
-        return {'success': True, 'data': generate_mock_kpi_trends(params.get('category', 'all') if params else 'all')}
+        return {'success': True, 'data': generate_mock_kpi_trends(category)}
     elif 'recent-events' in endpoint:
-        return {'success': True, 'data': generate_mock_recent_events(params.get('category', 'all') if params else 'all')}
+        return {'success': True, 'data': generate_mock_recent_events(category)}
     elif 'scenario-performance' in endpoint:
-        return {'success': True, 'data': generate_mock_scenario_performance(params.get('category', 'all') if params else 'all')}
+        return {'success': True, 'data': generate_mock_scenario_performance(category)}
     elif 'category-metrics' in endpoint:
-        return {'success': True, 'data': generate_mock_category_metrics(params.get('category', 'all') if params else 'all')}
+        return {'success': True, 'data': generate_mock_category_metrics(category)}
     else:
         return {'success': False, 'error': 'Unknown endpoint'}
 
@@ -485,12 +445,12 @@ def dashboard_page():
     # 데이터 로딩
     with st.spinner("데이터를 불러오는 중..."):
         # 모든 데이터 병렬로 가져오기
-        overview_data = fetch_api_data('dashboard/overview', {'category': st.session_state.selected_category})
-        funnel_data = fetch_api_data('dashboard/funnels', {'category': st.session_state.selected_category})
-        kpi_trends = fetch_api_data('dashboard/kpi-trends', {'category': st.session_state.selected_category})
-        recent_events = fetch_api_data('dashboard/recent-events', {'category': st.session_state.selected_category})
-        scenario_performance = fetch_api_data('dashboard/scenario-performance', {'category': st.session_state.selected_category})
-        category_metrics = fetch_api_data('dashboard/category-metrics', {'category': st.session_state.selected_category})
+        overview_data = fetch_data('dashboard/overview', st.session_state.selected_category)
+        funnel_data = fetch_data('dashboard/funnels', st.session_state.selected_category)
+        kpi_trends = fetch_data('dashboard/kpi-trends', st.session_state.selected_category)
+        recent_events = fetch_data('dashboard/recent-events', st.session_state.selected_category)
+        scenario_performance = fetch_data('dashboard/scenario-performance', st.session_state.selected_category)
+        category_metrics = fetch_data('dashboard/category-metrics', st.session_state.selected_category)
     
     # 데이터 검증
     if not all([overview_data['success'], funnel_data['success'], kpi_trends['success'], 
@@ -574,7 +534,7 @@ def kpi_analytics_page():
     st.markdown('<h1 class="main-header">📈 KPI 분석</h1>', unsafe_allow_html=True)
     
     # KPI 트렌드 데이터 가져오기
-    kpi_data = fetch_api_data('dashboard/kpi-trends', {'category': st.session_state.selected_category})
+    kpi_data = fetch_data('dashboard/kpi-trends', st.session_state.selected_category)
     
     if kpi_data['success']:
         st.plotly_chart(create_kpi_trend_chart(kpi_data['data']), use_container_width=True)
@@ -600,7 +560,7 @@ def customer_journey_page():
     st.markdown('<h1 class="main-header">🗺️ 고객 여정 맵</h1>', unsafe_allow_html=True)
     
     # 퍼널 데이터 가져오기
-    funnel_data = fetch_api_data('dashboard/funnels', {'category': st.session_state.selected_category})
+    funnel_data = fetch_data('dashboard/funnels', st.session_state.selected_category)
     
     if funnel_data['success']:
         st.plotly_chart(create_funnel_chart(funnel_data['data']), use_container_width=True)
@@ -653,7 +613,7 @@ def sidebar():
     st.sidebar.title("🎯 고객 분석 시스템")
     
     # 시스템 상태 표시
-    if is_streamlit_cloud:
+    if IS_STREAMLIT_CLOUD:
         st.sidebar.success("☁️ Streamlit Cloud 모드")
         st.sidebar.info("🔄 모의 데이터 사용 중")
     else:
