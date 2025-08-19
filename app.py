@@ -388,24 +388,24 @@ def admin_panel():
     
     with col1:
         st.subheader("📊 데이터 생성")
-        if st.button("새로운 이벤트 생성"):
+        if st.button("새로운 이벤트 생성", key="admin_generate_event"):
             st.success("새로운 이벤트가 생성되었습니다!")
             st.session_state.last_refresh = datetime.now()
     
     with col2:
         st.subheader("🔄 데이터 새로고침")
-        if st.button("데이터 새로고침"):
+        if st.button("데이터 새로고침", key="admin_refresh_data"):
             st.success("데이터가 새로고침되었습니다!")
             st.session_state.last_refresh = datetime.now()
     
     with col3:
         st.subheader("⚙️ 시스템 설정")
-        auto_refresh = st.checkbox("자동 새로고침", value=True)
+        auto_refresh = st.checkbox("자동 새로고침", value=True, key="admin_auto_refresh")
         if auto_refresh:
             st.info("5분마다 자동 새로고침")
 
 # 카테고리 선택기
-def category_selector():
+def category_selector(key_suffix=""):
     """카테고리 선택기"""
     categories = {
         'all': '전체',
@@ -418,7 +418,8 @@ def category_selector():
         "카테고리 선택",
         options=list(categories.keys()),
         format_func=lambda x: categories[x],
-        index=list(categories.keys()).index(st.session_state.selected_category)
+        index=list(categories.keys()).index(st.session_state.selected_category),
+        key=f"category_selector{key_suffix}"
     )
     
     if selected != st.session_state.selected_category:
@@ -433,7 +434,7 @@ def dashboard_page():
     st.markdown('<p class="sub-header">실시간 고객 여정과 퍼널 분석을 통한 인사이트</p>', unsafe_allow_html=True)
     
     # 관리자 패널 토글
-    if st.button("🔧 관리자 패널"):
+    if st.button("🔧 관리자 패널", key="toggle_admin_panel"):
         st.session_state.show_admin_panel = not st.session_state.show_admin_panel
     
     # 관리자 패널 표시
@@ -441,7 +442,7 @@ def dashboard_page():
         admin_panel()
     
     # 카테고리 선택
-    category_selector()
+    category_selector("_dashboard")
     
     # 데이터 로딩
     with st.spinner("데이터를 불러오는 중..."):
@@ -589,23 +590,23 @@ def settings_page():
     
     with col1:
         st.subheader("📊 데이터 설정")
-        refresh_interval = st.selectbox("새로고침 간격", ["1분", "5분", "10분", "30분"], index=1)
-        auto_refresh = st.checkbox("자동 새로고침", value=True)
+        refresh_interval = st.selectbox("새로고침 간격", ["1분", "5분", "10분", "30분"], index=1, key="settings_refresh_interval")
+        auto_refresh = st.checkbox("자동 새로고침", value=True, key="settings_auto_refresh")
         
         st.subheader("🎨 UI 설정")
-        theme = st.selectbox("테마", ["라이트", "다크"], index=0)
-        language = st.selectbox("언어", ["한국어", "English"], index=0)
+        theme = st.selectbox("테마", ["라이트", "다크"], index=0, key="settings_theme")
+        language = st.selectbox("언어", ["한국어", "English"], index=0, key="settings_language")
     
     with col2:
         st.subheader("🔔 알림 설정")
-        email_notifications = st.checkbox("이메일 알림", value=False)
-        slack_notifications = st.checkbox("Slack 알림", value=False)
+        email_notifications = st.checkbox("이메일 알림", value=False, key="settings_email_notifications")
+        slack_notifications = st.checkbox("Slack 알림", value=False, key="settings_slack_notifications")
         
         st.subheader("📈 차트 설정")
-        chart_animation = st.checkbox("차트 애니메이션", value=True)
-        show_data_labels = st.checkbox("데이터 라벨 표시", value=True)
+        chart_animation = st.checkbox("차트 애니메이션", value=True, key="settings_chart_animation")
+        show_data_labels = st.checkbox("데이터 라벨 표시", value=True, key="settings_show_data_labels")
     
-    if st.button("💾 설정 저장"):
+    if st.button("💾 설정 저장", key="settings_save"):
         st.success("설정이 저장되었습니다!")
 
 # 사이드바
@@ -644,7 +645,8 @@ def sidebar():
         "카테고리 선택",
         options=list(categories.keys()),
         format_func=lambda x: categories[x],
-        index=list(categories.keys()).index(st.session_state.selected_category)
+        index=list(categories.keys()).index(st.session_state.selected_category),
+        key="sidebar_category_selector"
     )
     
     if selected_category != st.session_state.selected_category:
