@@ -61,57 +61,21 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# API 설정 - Streamlit Cloud 배포용
+# Streamlit Cloud 배포용 설정
 import os
 
-# Streamlit Cloud 환경 감지
-def is_streamlit_cloud():
-    """Streamlit Cloud 환경인지 확인"""
-    # 여러 방법으로 Streamlit Cloud 환경 감지
-    return (
-        os.getenv('STREAMLIT_CLOUD') == 'true' or
-        os.getenv('STREAMLIT_SHARING_MODE') == 'streamlit' or
-        'streamlit.app' in os.getenv('STREAMLIT_SERVER_HEADLESS', '') or
-        'share.streamlit.io' in os.getenv('STREAMLIT_SERVER_HEADLESS', '')
-    )
+# Streamlit Cloud 환경에서는 항상 모의 데이터 사용
+# 로컬 환경에서만 실제 API 사용
+is_local = os.getenv('STREAMLIT_CLOUD') != 'true'
 
-# 환경에 따라 API URL 설정
-if is_streamlit_cloud():
-    # Streamlit Cloud 환경에서는 모의 데이터 사용
-    API_BASE_URL = None
-    USE_MOCK_DATA = True
-    st.info("🔄 Streamlit Cloud 환경에서 모의 데이터를 사용합니다.")
-else:
-    # 로컬 환경에서는 실제 API 사용
+if is_local:
+    # 로컬 환경
     API_BASE_URL = "http://localhost:3001/api"
     USE_MOCK_DATA = False
-
-# Streamlit Cloud 환경 강제 감지 및 설정
-def force_mock_data_mode():
-    """Streamlit Cloud 환경에서 강제로 모의 데이터 모드 활성화"""
-    # Streamlit Cloud 환경 감지
-    cloud_indicators = [
-        'streamlit.app',
-        'share.streamlit.io',
-        'STREAMLIT_CLOUD=true',
-        'STREAMLIT_SHARING_MODE=streamlit'
-    ]
-    
-    # 현재 URL이나 환경 변수에서 클라우드 환경 감지
-    current_url = st.get_option('server.headless') or ''
-    env_vars = str(os.environ)
-    
-    for indicator in cloud_indicators:
-        if indicator in current_url or indicator in env_vars:
-            return True
-    
-    return False
-
-# 강제 모의 데이터 모드 설정
-if force_mock_data_mode():
-    USE_MOCK_DATA = True
+else:
+    # Streamlit Cloud 환경
     API_BASE_URL = None
-    st.sidebar.success("☁️ Streamlit Cloud 모드")
+    USE_MOCK_DATA = True
 
 # 세션 상태 초기화
 if 'selected_category' not in st.session_state:
@@ -716,8 +680,12 @@ def main():
         st.markdown("### 시스템 상태")
         
         # 시스템 상태 표시
-        st.success("☁️ Streamlit Cloud 모드")
-        st.info("🔄 모의 데이터 사용 중")
+        if is_local:
+            st.success("🖥️ 로컬 환경")
+            st.info("🔗 실제 API 연결")
+        else:
+            st.success("☁️ Streamlit Cloud 모드")
+            st.info("🔄 모의 데이터 사용 중")
         
         st.markdown("---")
         st.markdown("### 빠른 액션")
