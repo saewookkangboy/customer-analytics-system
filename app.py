@@ -100,19 +100,28 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 환경 설정
-# Streamlit Cloud 환경 감지
-is_streamlit_cloud = os.getenv('STREAMLIT_CLOUD') == 'true' or os.getenv('STREAMLIT_SHARING_MODE') == 'streamlit'
+# Streamlit Cloud 환경 감지 (더 강력한 감지)
+is_streamlit_cloud = (
+    os.getenv('STREAMLIT_CLOUD') == 'true' or 
+    os.getenv('STREAMLIT_SHARING_MODE') == 'streamlit' or
+    'streamlit.app' in os.getenv('STREAMLIT_SERVER_HEADLESS', '') or
+    'share.streamlit.io' in os.getenv('STREAMLIT_SERVER_HEADLESS', '') or
+    os.getenv('STREAMLIT_SERVER_PORT') == '8501'
+)
 
+# 강제로 Streamlit Cloud 환경 감지 (안전을 위해)
 if is_streamlit_cloud:
     # Streamlit Cloud 환경에서는 모의 데이터 사용
     is_local = False
     API_BASE_URL = None
     USE_MOCK_DATA = True
+    print("🌐 Streamlit Cloud 환경 감지됨 - 모의 데이터 사용")
 else:
     # 로컬 환경에서는 실제 API 사용
     is_local = True
     API_BASE_URL = "http://localhost:3001/api"
     USE_MOCK_DATA = False
+    print("🖥️ 로컬 환경 감지됨 - 실제 API 사용")
 
 # 세션 상태 초기화
 if 'selected_category' not in st.session_state:
@@ -292,15 +301,33 @@ def fetch_api_data(endpoint: str, params: Dict[str, Any] = None) -> Dict[str, An
         else:
             return {'success': False, 'error': 'Unknown endpoint'}
     
-    # 로컬 환경에서는 실제 API 호출
-    try:
-        url = f"{API_BASE_URL}/{endpoint}"
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        return {'success': True, 'data': response.json()}
-    except Exception as e:
-        st.error(f"API 호출 오류: {str(e)}")
-        return {'success': False, 'error': str(e)}
+    # 로컬 환경에서만 실제 API 호출 시도
+    if is_local and API_BASE_URL:
+        try:
+            url = f"{API_BASE_URL}/{endpoint}"
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            return {'success': True, 'data': response.json()}
+        except Exception as e:
+            st.error(f"API 호출 오류: {str(e)}")
+            # API 호출 실패 시 모의 데이터로 폴백
+            pass  # 에러 메시지만 표시하고 모의 데이터로 계속 진행
+    
+    # 기본적으로 모의 데이터 반환 (Streamlit Cloud 또는 API 호출 실패 시)
+    if 'overview' in endpoint:
+        return {'success': True, 'data': generate_mock_overview(params.get('category', 'all') if params else 'all')}
+    elif 'funnels' in endpoint:
+        return {'success': True, 'data': generate_mock_funnel_data(params.get('category', 'all') if params else 'all')}
+    elif 'kpi-trends' in endpoint:
+        return {'success': True, 'data': generate_mock_kpi_trends(params.get('category', 'all') if params else 'all')}
+    elif 'recent-events' in endpoint:
+        return {'success': True, 'data': generate_mock_recent_events(params.get('category', 'all') if params else 'all')}
+    elif 'scenario-performance' in endpoint:
+        return {'success': True, 'data': generate_mock_scenario_performance(params.get('category', 'all') if params else 'all')}
+    elif 'category-metrics' in endpoint:
+        return {'success': True, 'data': generate_mock_category_metrics(params.get('category', 'all') if params else 'all')}
+    else:
+        return {'success': False, 'error': 'Unknown endpoint'}
 
 # 차트 생성 함수들
 def create_funnel_chart(funnel_data: List[Dict[str, Any]]) -> go.Figure:
