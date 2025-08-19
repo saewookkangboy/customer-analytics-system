@@ -61,8 +61,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# API 설정
-API_BASE_URL = "http://localhost:3001/api"
+# API 설정 - Streamlit Cloud 배포용
+import os
+
+# 환경에 따라 API URL 설정
+if os.getenv('STREAMLIT_CLOUD'):
+    # Streamlit Cloud 환경에서는 모의 데이터 사용
+    API_BASE_URL = None
+    USE_MOCK_DATA = True
+else:
+    # 로컬 환경에서는 실제 API 사용
+    API_BASE_URL = "http://localhost:3001/api"
+    USE_MOCK_DATA = False
 
 # 세션 상태 초기화
 if 'selected_category' not in st.session_state:
@@ -70,16 +80,124 @@ if 'selected_category' not in st.session_state:
 if 'show_journey_map' not in st.session_state:
     st.session_state.show_journey_map = False
 
+def get_mock_dashboard_overview(category='all'):
+    """모의 대시보드 개요 데이터"""
+    return {
+        "success": True,
+        "data": {
+            "total_users": 15420,
+            "total_sessions": 28450,
+            "total_conversions": 3240,
+            "average_conversion_rate": 11.4
+        }
+    }
+
+def get_mock_funnel_data(category='all'):
+    """모의 퍼널 데이터"""
+    return {
+        "success": True,
+        "data": [
+            {
+                "scenario_name": "신규 사용자 온보딩",
+                "stage_name": "홈페이지 방문",
+                "stage_order": 1,
+                "users_reached": 1000,
+                "conversion_rate": 100
+            },
+            {
+                "scenario_name": "신규 사용자 온보딩",
+                "stage_name": "상품 탐색",
+                "stage_order": 2,
+                "users_reached": 750,
+                "conversion_rate": 75
+            },
+            {
+                "scenario_name": "신규 사용자 온보딩",
+                "stage_name": "장바구니 추가",
+                "stage_order": 3,
+                "users_reached": 450,
+                "conversion_rate": 60
+            },
+            {
+                "scenario_name": "신규 사용자 온보딩",
+                "stage_name": "결제 완료",
+                "stage_order": 4,
+                "users_reached": 225,
+                "conversion_rate": 50
+            }
+        ]
+    }
+
+def get_mock_kpi_trends(category='all'):
+    """모의 KPI 트렌드 데이터"""
+    return {
+        "success": True,
+        "data": [
+            {"date": "2025-08-15", "value": 10.2},
+            {"date": "2025-08-16", "value": 11.1},
+            {"date": "2025-08-17", "value": 12.3},
+            {"date": "2025-08-18", "value": 11.8},
+            {"date": "2025-08-19", "value": 13.2}
+        ]
+    }
+
+def get_mock_recent_events(category='all'):
+    """모의 최근 이벤트 데이터"""
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": 1,
+                "event_type": "page_view",
+                "user_id": "user_001",
+                "timestamp": "2025-08-19T07:00:00Z",
+                "properties": {"page": "/home", "category": category}
+            },
+            {
+                "id": 2,
+                "event_type": "click",
+                "user_id": "user_002",
+                "timestamp": "2025-08-19T06:55:00Z",
+                "properties": {"button": "signup", "category": category}
+            },
+            {
+                "id": 3,
+                "event_type": "purchase",
+                "user_id": "user_003",
+                "timestamp": "2025-08-19T06:50:00Z",
+                "properties": {"amount": 99.99, "category": category}
+            }
+        ]
+    }
+
 def fetch_api_data(endpoint, params=None):
     """API 데이터 가져오기"""
-    try:
-        url = f"{API_BASE_URL}/{endpoint}"
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"API 호출 오류: {str(e)}")
-        return None
+    if USE_MOCK_DATA:
+        # 모의 데이터 사용
+        if endpoint == "dashboard/overview":
+            category = params.get('category', 'all') if params else 'all'
+            return get_mock_dashboard_overview(category)
+        elif endpoint == "dashboard/funnels":
+            category = params.get('category', 'all') if params else 'all'
+            return get_mock_funnel_data(category)
+        elif endpoint == "dashboard/kpi-trends":
+            category = params.get('category', 'all') if params else 'all'
+            return get_mock_kpi_trends(category)
+        elif endpoint == "dashboard/recent-events":
+            category = params.get('category', 'all') if params else 'all'
+            return get_mock_recent_events(category)
+        else:
+            return {"success": False, "data": None}
+    else:
+        # 실제 API 호출
+        try:
+            url = f"{API_BASE_URL}/{endpoint}"
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            st.error(f"API 호출 오류: {str(e)}")
+            return None
 
 def create_metric_card(title, value, unit="", change=None, change_type="neutral"):
     """메트릭 카드 생성"""
@@ -565,14 +683,17 @@ def main():
         st.markdown("### 시스템 상태")
         
         # 백엔드 연결 상태 확인
-        try:
-            response = requests.get(f"{API_BASE_URL}/dashboard/overview", timeout=5)
-            if response.status_code == 200:
-                st.success("✅ 백엔드 연결됨")
-            else:
-                st.error("❌ 백엔드 오류")
-        except:
-            st.error("❌ 백엔드 연결 실패")
+        if USE_MOCK_DATA:
+            st.info("🔄 모의 데이터 모드")
+        else:
+            try:
+                response = requests.get(f"{API_BASE_URL}/dashboard/overview", timeout=5)
+                if response.status_code == 200:
+                    st.success("✅ 백엔드 연결됨")
+                else:
+                    st.error("❌ 백엔드 오류")
+            except:
+                st.error("❌ 백엔드 연결 실패")
         
         st.markdown("---")
         st.markdown("### 빠른 액션")
