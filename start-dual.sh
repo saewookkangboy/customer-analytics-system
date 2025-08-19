@@ -44,6 +44,9 @@ check_port 8100 || exit 1
 check_port 8501 || exit 1
 echo ""
 
+# 로그 디렉토리 생성
+mkdir -p logs
+
 # 백엔드 시작
 echo -e "${BLUE}🔧 백엔드 서버 시작 중...${NC}"
 cd backend

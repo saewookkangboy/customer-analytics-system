@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
+import plotly.express as px
 from plotly.subplots import make_subplots
 import requests
+import os
 import json
 from datetime import datetime, timedelta
-from streamlit_option_menu import option_menu
+import random
+from typing import Dict, List, Any, Optional
 import time
 
 # 페이지 설정
@@ -18,694 +19,665 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS 스타일
+# CSS 스타일링
 st.markdown("""
 <style>
     .main-header {
         font-size: 2.5rem;
         font-weight: bold;
-        color: #1f77b4;
-        text-align: center;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+    }
+    .sub-header {
+        font-size: 1.1rem;
+        color: #6b7280;
         margin-bottom: 2rem;
     }
     .metric-card {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #1f77b4;
-        margin: 0.5rem 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     .metric-value {
         font-size: 2rem;
         font-weight: bold;
-        color: #1f77b4;
+        margin: 0.5rem 0;
     }
-    .metric-label {
+    .metric-change {
         font-size: 0.9rem;
-        color: #6c757d;
+        opacity: 0.9;
+    }
+    .chart-container {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1rem;
+    }
+    .admin-panel {
+        background: #f8fafc;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        margin-bottom: 2rem;
+    }
+    .category-selector {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+    }
+    .event-table {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     .success-message {
-        background-color: #d4edda;
-        color: #155724;
+        background: #d1fae5;
+        color: #065f46;
         padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
+        border-radius: 8px;
+        border-left: 4px solid #10b981;
     }
     .error-message {
-        background-color: #f8d7da;
-        color: #721c24;
+        background: #fee2e2;
+        color: #991b1b;
         padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
+        border-radius: 8px;
+        border-left: 4px solid #ef4444;
+    }
+    .loading-spinner {
+        text-align: center;
+        padding: 2rem;
+        color: #6b7280;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Streamlit Cloud 배포용 설정
-import os
-
-# Streamlit Cloud 환경에서는 항상 모의 데이터 사용
-# 로컬 환경에서만 실제 API 사용
+# 환경 설정
 is_local = os.getenv('STREAMLIT_CLOUD') != 'true'
-
-if is_local:
-    # 로컬 환경
-    API_BASE_URL = "http://localhost:3001/api"
-    USE_MOCK_DATA = False
-else:
-    # Streamlit Cloud 환경
-    API_BASE_URL = None
-    USE_MOCK_DATA = True
+API_BASE_URL = "http://localhost:3001/api" if is_local else None
+USE_MOCK_DATA = not is_local
 
 # 세션 상태 초기화
 if 'selected_category' not in st.session_state:
     st.session_state.selected_category = 'all'
-if 'show_journey_map' not in st.session_state:
-    st.session_state.show_journey_map = False
+if 'show_admin_panel' not in st.session_state:
+    st.session_state.show_admin_panel = False
+if 'last_refresh' not in st.session_state:
+    st.session_state.last_refresh = datetime.now()
 
-def get_mock_dashboard_overview(category='all'):
-    """모의 대시보드 개요 데이터"""
-    return {
-        "success": True,
-        "data": {
-            "total_users": 15420,
-            "total_sessions": 28450,
-            "total_conversions": 3240,
-            "average_conversion_rate": 11.4
-        }
+# 모의 데이터 생성 함수들
+def generate_mock_overview(category: str = 'all') -> Dict[str, Any]:
+    """모의 대시보드 개요 데이터 생성"""
+    base_data = {
+        'total_users': random.randint(50000, 150000),
+        'total_sessions': random.randint(80000, 200000),
+        'total_conversions': random.randint(5000, 15000),
+        'average_conversion_rate': round(random.uniform(5.0, 12.0), 1)
     }
+    
+    if category == 'ecommerce':
+        base_data.update({
+            'total_revenue': random.randint(50000000, 200000000),
+            'average_order_value': random.randint(80000, 150000)
+        })
+    elif category == 'lead_generation':
+        base_data.update({
+            'total_leads': random.randint(2000, 8000),
+            'lead_conversion_rate': round(random.uniform(15.0, 35.0), 1)
+        })
+    elif category == 'general_website':
+        base_data.update({
+            'total_page_views': random.randint(150000, 400000),
+            'unique_visitors': random.randint(30000, 80000)
+        })
+    
+    return base_data
 
-def get_mock_funnel_data(category='all'):
-    """모의 퍼널 데이터"""
-    return {
-        "success": True,
-        "data": [
-            {
-                "scenario_name": "신규 사용자 온보딩",
-                "stage_name": "홈페이지 방문",
-                "stage_order": 1,
-                "users_reached": 1000,
-                "conversion_rate": 100
-            },
-            {
-                "scenario_name": "신규 사용자 온보딩",
-                "stage_name": "상품 탐색",
-                "stage_order": 2,
-                "users_reached": 750,
-                "conversion_rate": 75
-            },
-            {
-                "scenario_name": "신규 사용자 온보딩",
-                "stage_name": "장바구니 추가",
-                "stage_order": 3,
-                "users_reached": 450,
-                "conversion_rate": 60
-            },
-            {
-                "scenario_name": "신규 사용자 온보딩",
-                "stage_name": "결제 완료",
-                "stage_order": 4,
-                "users_reached": 225,
-                "conversion_rate": 50
-            }
+def generate_mock_funnel_data(category: str = 'all') -> List[Dict[str, Any]]:
+    """모의 퍼널 데이터 생성"""
+    if category == 'ecommerce':
+        stages = [
+            {'stage_name': '홈페이지 방문', 'users_reached': 10000},
+            {'stage_name': '상품 탐색', 'users_reached': 7500},
+            {'stage_name': '장바구니 추가', 'users_reached': 4500},
+            {'stage_name': '결제 페이지', 'users_reached': 2800},
+            {'stage_name': '구매 완료', 'users_reached': 2100}
         ]
-    }
-
-def get_mock_kpi_trends(category='all'):
-    """모의 KPI 트렌드 데이터"""
-    return {
-        "success": True,
-        "data": [
-            {"date": "2025-08-15", "value": 10.2},
-            {"date": "2025-08-16", "value": 11.1},
-            {"date": "2025-08-17", "value": 12.3},
-            {"date": "2025-08-18", "value": 11.8},
-            {"date": "2025-08-19", "value": 13.2}
+    elif category == 'lead_generation':
+        stages = [
+            {'stage_name': '랜딩페이지 방문', 'users_reached': 8000},
+            {'stage_name': '콘텐츠 확인', 'users_reached': 6000},
+            {'stage_name': '이메일 입력', 'users_reached': 3500},
+            {'stage_name': '이메일 인증', 'users_reached': 2800},
+            {'stage_name': '리드 등록', 'users_reached': 2200}
         ]
-    }
-
-def get_mock_recent_events(category='all'):
-    """모의 최근 이벤트 데이터"""
-    return {
-        "success": True,
-        "data": [
-            {
-                "id": 1,
-                "event_type": "page_view",
-                "user_id": "user_001",
-                "timestamp": "2025-08-19T07:00:00Z",
-                "properties": {"page": "/home", "category": category}
-            },
-            {
-                "id": 2,
-                "event_type": "click",
-                "user_id": "user_002",
-                "timestamp": "2025-08-19T06:55:00Z",
-                "properties": {"button": "signup", "category": category}
-            },
-            {
-                "id": 3,
-                "event_type": "purchase",
-                "user_id": "user_003",
-                "timestamp": "2025-08-19T06:50:00Z",
-                "properties": {"amount": 99.99, "category": category}
-            }
+    else:
+        stages = [
+            {'stage_name': '웹사이트 방문', 'users_reached': 12000},
+            {'stage_name': '페이지 탐색', 'users_reached': 9000},
+            {'stage_name': '콘텐츠 소비', 'users_reached': 6500},
+            {'stage_name': '행동 완료', 'users_reached': 4200}
         ]
-    }
+    
+    return stages
 
-def fetch_api_data(endpoint, params=None):
-    """API 데이터 가져오기 - Streamlit Cloud에서는 항상 모의 데이터 사용"""
-    # Streamlit Cloud 환경에서는 항상 모의 데이터 사용
-    try:
-        # 모의 데이터 사용
-        if endpoint == "dashboard/overview":
-            category = params.get('category', 'all') if params else 'all'
-            return get_mock_dashboard_overview(category)
-        elif endpoint == "dashboard/funnels":
-            category = params.get('category', 'all') if params else 'all'
-            return get_mock_funnel_data(category)
-        elif endpoint == "dashboard/kpi-trends":
-            category = params.get('category', 'all') if params else 'all'
-            return get_mock_kpi_trends(category)
-        elif endpoint == "dashboard/recent-events":
-            category = params.get('category', 'all') if params else 'all'
-            return get_mock_recent_events(category)
+def generate_mock_kpi_trends(category: str = 'all') -> List[Dict[str, Any]]:
+    """모의 KPI 트렌드 데이터 생성"""
+    trends = []
+    base_date = datetime.now() - timedelta(days=30)
+    
+    for i in range(30):
+        date = base_date + timedelta(days=i)
+        if category == 'ecommerce':
+            value = random.uniform(8.0, 15.0)
+        elif category == 'lead_generation':
+            value = random.uniform(12.0, 25.0)
         else:
-            return {"success": False, "data": None}
+            value = random.uniform(6.0, 12.0)
+        
+        trends.append({
+            'date': date.strftime('%Y-%m-%d'),
+            'value': round(value, 1)
+        })
+    
+    return trends
+
+def generate_mock_recent_events(category: str = 'all') -> List[Dict[str, Any]]:
+    """모의 최근 이벤트 데이터 생성"""
+    events = []
+    event_types = {
+        'ecommerce': ['상품 조회', '장바구니 추가', '구매 완료', '리뷰 작성'],
+        'lead_generation': ['페이지 방문', '이메일 구독', '다운로드', '문의하기'],
+        'general_website': ['페이지 방문', '링크 클릭', '검색', '다운로드']
+    }
+    
+    for i in range(10):
+        event_type = random.choice(event_types.get(category, ['페이지 방문', '링크 클릭']))
+        events.append({
+            'id': f'event_{i+1}',
+            'user_id': f'user_{random.randint(1000, 9999)}',
+            'event_type': event_type,
+            'timestamp': (datetime.now() - timedelta(minutes=random.randint(1, 1440))).isoformat(),
+            'category': category,
+            'value': random.randint(1, 100) if event_type in ['구매 완료', '다운로드'] else None
+        })
+    
+    return sorted(events, key=lambda x: x['timestamp'], reverse=True)
+
+def generate_mock_scenario_performance(category: str = 'all') -> List[Dict[str, Any]]:
+    """모의 시나리오 성과 데이터 생성"""
+    scenarios = {
+        'ecommerce': ['신규 고객', '재방문 고객', '프리미엄 고객'],
+        'lead_generation': ['이메일 캠페인', '소셜미디어', '검색 광고'],
+        'general_website': ['직접 방문', '검색 엔진', '소셜 미디어']
+    }
+    
+    performance = []
+    for scenario in scenarios.get(category, ['시나리오 1', '시나리오 2', '시나리오 3']):
+        performance.append({
+            'scenario_name': scenario,
+            'conversion_rate': round(random.uniform(5.0, 25.0), 1),
+            'total_users': random.randint(1000, 10000),
+            'converted_users': random.randint(100, 2000)
+        })
+    
+    return performance
+
+def generate_mock_category_metrics(category: str = 'all') -> Dict[str, Any]:
+    """모의 카테고리별 메트릭 데이터 생성"""
+    if category == 'ecommerce':
+        return {
+            'total_revenue': random.randint(50000000, 200000000),
+            'average_order_value': random.randint(80000, 150000),
+            'cart_abandonment_rate': round(random.uniform(20.0, 40.0), 1),
+            'repeat_purchase_rate': round(random.uniform(15.0, 35.0), 1)
+        }
+    elif category == 'lead_generation':
+        return {
+            'total_leads': random.randint(2000, 8000),
+            'lead_conversion_rate': round(random.uniform(15.0, 35.0), 1),
+            'email_open_rate': round(random.uniform(20.0, 45.0), 1),
+            'click_through_rate': round(random.uniform(2.0, 8.0), 1)
+        }
+    elif category == 'general_website':
+        return {
+            'total_page_views': random.randint(150000, 400000),
+            'unique_visitors': random.randint(30000, 80000),
+            'bounce_rate': round(random.uniform(30.0, 60.0), 1),
+            'average_session_duration': random.randint(120, 480)
+        }
+    else:
+        return {
+            'total_users': random.randint(50000, 150000),
+            'total_sessions': random.randint(80000, 200000),
+            'total_conversions': random.randint(5000, 15000),
+            'average_conversion_rate': round(random.uniform(5.0, 12.0), 1)
+        }
+
+# API 호출 함수
+def fetch_api_data(endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+    """API 데이터 가져오기"""
+    if USE_MOCK_DATA:
+        # 모의 데이터 반환
+        if 'overview' in endpoint:
+            return {'success': True, 'data': generate_mock_overview(params.get('category', 'all') if params else 'all')}
+        elif 'funnels' in endpoint:
+            return {'success': True, 'data': generate_mock_funnel_data(params.get('category', 'all') if params else 'all')}
+        elif 'kpi-trends' in endpoint:
+            return {'success': True, 'data': generate_mock_kpi_trends(params.get('category', 'all') if params else 'all')}
+        elif 'recent-events' in endpoint:
+            return {'success': True, 'data': generate_mock_recent_events(params.get('category', 'all') if params else 'all')}
+        elif 'scenario-performance' in endpoint:
+            return {'success': True, 'data': generate_mock_scenario_performance(params.get('category', 'all') if params else 'all')}
+        elif 'category-metrics' in endpoint:
+            return {'success': True, 'data': generate_mock_category_metrics(params.get('category', 'all') if params else 'all')}
+        else:
+            return {'success': False, 'error': 'Unknown endpoint'}
+    
+    # 실제 API 호출
+    try:
+        url = f"{API_BASE_URL}/{endpoint}"
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        return {'success': True, 'data': response.json()}
     except Exception as e:
-        st.error(f"데이터 로드 오류: {str(e)}")
-        return None
+        st.error(f"API 호출 오류: {str(e)}")
+        return {'success': False, 'error': str(e)}
 
-def create_metric_card(title, value, unit="", change=None, change_type="neutral"):
-    """메트릭 카드 생성"""
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">{title}</div>
-            <div class="metric-value">{value:,.1f}{unit}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        if change is not None:
-            if change_type == "positive":
-                st.success(f"+{change:+.1f}%")
-            elif change_type == "negative":
-                st.error(f"{change:+.1f}%")
-            else:
-                st.info(f"{change:+.1f}%")
-
-def create_funnel_chart(funnel_data):
+# 차트 생성 함수들
+def create_funnel_chart(funnel_data: List[Dict[str, Any]]) -> go.Figure:
     """퍼널 차트 생성"""
-    if not funnel_data:
-        return None
-    
     stages = [stage['stage_name'] for stage in funnel_data]
     values = [stage['users_reached'] for stage in funnel_data]
-    conversion_rates = [stage['conversion_rate'] for stage in funnel_data]
     
-    fig = go.Figure()
-    
-    fig.add_trace(go.Funnel(
+    fig = go.Figure(go.Funnel(
         y=stages,
         x=values,
         textinfo="value+percent initial",
         textposition="inside",
-        marker={"color": ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]},
+        marker={"color": ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe"]},
         connector={"line": {"color": "royalblue", "width": 3}}
     ))
     
     fig.update_layout(
-        title="고객 여정 퍼널",
-        height=400,
-        showlegend=False
+        title="고객 여정 퍼널 분석",
+        height=500,
+        showlegend=False,
+        margin=dict(l=50, r=50, t=50, b=50)
     )
     
     return fig
 
-def create_kpi_trend_chart(kpi_data):
+def create_kpi_trend_chart(trend_data: List[Dict[str, Any]]) -> go.Figure:
     """KPI 트렌드 차트 생성"""
-    if not kpi_data:
-        return None
+    dates = [item['date'] for item in trend_data]
+    values = [item['value'] for item in trend_data]
     
     fig = go.Figure()
-    
-    # 단일 KPI 트렌드 데이터 처리
-    dates = [item['date'] for item in kpi_data]
-    values = [item['value'] for item in kpi_data]
-    
     fig.add_trace(go.Scatter(
         x=dates,
         y=values,
         mode='lines+markers',
-        name='KPI 트렌드',
-        line=dict(width=3)
+        name='전환율',
+        line=dict(color='#667eea', width=3),
+        marker=dict(size=6)
     ))
     
     fig.update_layout(
-        title="KPI 트렌드",
+        title="KPI 트렌드 분석",
         xaxis_title="날짜",
-        yaxis_title="값",
-        height=400,
-        hovermode='x unified'
+        yaxis_title="전환율 (%)",
+        height=500,
+        margin=dict(l=50, r=50, t=50, b=50)
     )
     
     return fig
 
-def create_customer_journey_map():
-    """고객 여정 맵 생성"""
-    journey_stages = [
-        {"stage": "인지", "description": "브랜드/제품 인지", "metrics": {"방문자": 15000, "전환율": 8.5}},
-        {"stage": "관심", "description": "제품 정보 탐색", "metrics": {"체류시간": 180, "페이지뷰": 4.2}},
-        {"stage": "고려", "description": "제품 비교/검토", "metrics": {"장바구니": 3200, "비교율": 15.2}},
-        {"stage": "결정", "description": "구매 결정", "metrics": {"구매": 1280, "전환율": 40.0}},
-        {"stage": "유지", "description": "고객 유지", "metrics": {"재구매": 512, "만족도": 4.6}}
-    ]
+def create_scenario_comparison_chart(scenario_data: List[Dict[str, Any]]) -> go.Figure:
+    """시나리오 비교 차트 생성"""
+    scenarios = [item['scenario_name'] for item in scenario_data]
+    conversion_rates = [item['conversion_rate'] for item in scenario_data]
     
-    fig = go.Figure()
-    
-    # 여정 단계별 박스 그리기
-    for i, stage in enumerate(journey_stages):
-        x_pos = i * 2
-        y_pos = 0
-        
-        # 메인 박스
-        fig.add_shape(
-            type="rect",
-            x0=x_pos-0.8, y0=y_pos-0.4,
-            x1=x_pos+0.8, y1=y_pos+0.4,
-            line=dict(color="blue", width=2),
-            fillcolor="lightblue",
-            opacity=0.7
+    fig = go.Figure(data=[
+        go.Bar(
+            x=scenarios,
+            y=conversion_rates,
+            marker_color=['#667eea', '#764ba2', '#f093fb'],
+            text=[f"{rate}%" for rate in conversion_rates],
+            textposition='auto'
         )
-        
-        # 단계명
-        fig.add_annotation(
-            x=x_pos, y=y_pos+0.6,
-            text=stage["stage"],
-            showarrow=False,
-            font=dict(size=14, color="blue")
-        )
-        
-        # 설명
-        fig.add_annotation(
-            x=x_pos, y=y_pos,
-            text=stage["description"],
-            showarrow=False,
-            font=dict(size=10)
-        )
-        
-        # 메트릭
-        metrics_text = "<br>".join([f"{k}: {v}" for k, v in stage["metrics"].items()])
-        fig.add_annotation(
-            x=x_pos, y=y_pos-0.6,
-            text=metrics_text,
-            showarrow=False,
-            font=dict(size=8),
-            align="center"
-        )
-        
-        # 화살표 (마지막 단계 제외)
-        if i < len(journey_stages) - 1:
-            fig.add_shape(
-                type="line",
-                x0=x_pos+0.8, y0=y_pos,
-                x1=x_pos+1.2, y1=y_pos,
-                line=dict(color="gray", width=2)
-            )
-            fig.add_annotation(
-                x=x_pos+1, y=y_pos+0.1,
-                text="→",
-                showarrow=False,
-                font=dict(size=16)
-            )
+    ])
     
     fig.update_layout(
-        title="고객 여정 맵",
-        xaxis=dict(showgrid=False, showticklabels=False, range=[-1, len(journey_stages)*2-1]),
-        yaxis=dict(showgrid=False, showticklabels=False, range=[-1, 1]),
-        height=300,
-        showlegend=False
+        title="시나리오별 성과 비교",
+        xaxis_title="시나리오",
+        yaxis_title="전환율 (%)",
+        height=500,
+        margin=dict(l=50, r=50, t=50, b=50)
     )
     
     return fig
 
-def dashboard_page():
-    """대시보드 페이지"""
-    st.markdown('<h1 class="main-header">📊 고객 분석 대시보드</h1>', unsafe_allow_html=True)
+# 메트릭 카드 컴포넌트
+def metric_card(title: str, value: str, change: str = None, change_type: str = "positive"):
+    """메트릭 카드 컴포넌트"""
+    change_icon = "📈" if change_type == "positive" else "📉"
+    change_color = "#10b981" if change_type == "positive" else "#ef4444"
     
-    # 카테고리 선택
-    category = st.selectbox(
+    st.markdown(f"""
+    <div class="metric-card">
+        <div style="font-size: 0.9rem; opacity: 0.9;">{title}</div>
+        <div class="metric-value">{value}</div>
+        {f'<div class="metric-change" style="color: {change_color};">{change_icon} {change}</div>' if change else ''}
+    </div>
+    """, unsafe_allow_html=True)
+
+# 관리자 패널
+def admin_panel():
+    """관리자 패널"""
+    st.markdown("### 🔧 관리자 패널")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.subheader("📊 데이터 생성")
+        if st.button("새로운 이벤트 생성"):
+            st.success("새로운 이벤트가 생성되었습니다!")
+            st.session_state.last_refresh = datetime.now()
+    
+    with col2:
+        st.subheader("🔄 데이터 새로고침")
+        if st.button("데이터 새로고침"):
+            st.success("데이터가 새로고침되었습니다!")
+            st.session_state.last_refresh = datetime.now()
+    
+    with col3:
+        st.subheader("⚙️ 시스템 설정")
+        auto_refresh = st.checkbox("자동 새로고침", value=True)
+        if auto_refresh:
+            st.info("5분마다 자동 새로고침")
+
+# 카테고리 선택기
+def category_selector():
+    """카테고리 선택기"""
+    categories = {
+        'all': '전체',
+        'ecommerce': 'E-commerce',
+        'lead_generation': '잠재고객 확보',
+        'general_website': '일반 웹사이트'
+    }
+    
+    selected = st.selectbox(
         "카테고리 선택",
-        ["all", "lead_generation", "product_development", "customer_service", "marketing"],
-        index=0,
-        format_func=lambda x: {
-            "all": "전체",
-            "lead_generation": "리드 생성",
-            "product_development": "제품 개발", 
-            "customer_service": "고객 서비스",
-            "marketing": "마케팅"
-        }[x]
+        options=list(categories.keys()),
+        format_func=lambda x: categories[x],
+        index=list(categories.keys()).index(st.session_state.selected_category)
     )
     
-    # API 데이터 가져오기
-    overview_data = fetch_api_data("dashboard/overview", {"category": category})
-    
-    if overview_data and overview_data.get('success'):
-        data = overview_data['data']
-        
-        # 메트릭 카드들
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            create_metric_card("총 사용자", data['total_users'])
-        
-        with col2:
-            create_metric_card("총 세션", data['total_sessions'])
-        
-        with col3:
-            create_metric_card("총 전환", data['total_conversions'])
-        
-        with col4:
-            create_metric_card("평균 전환율", data['average_conversion_rate'], "%")
-        
-        # 차트들
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # 퍼널 차트
-            funnel_data = fetch_api_data("dashboard/funnels", {"category": category})
-            if funnel_data and funnel_data.get('success'):
-                fig = create_funnel_chart(funnel_data['data'])
-                if fig:
-                    st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            # KPI 트렌드
-            kpi_data = fetch_api_data("dashboard/kpi-trends", {"category": category})
-            if kpi_data and kpi_data.get('success'):
-                fig = create_kpi_trend_chart(kpi_data['data'])
-                if fig:
-                    st.plotly_chart(fig, use_container_width=True)
-        
-        # 최근 이벤트 테이블
-        st.subheader("📋 최근 이벤트")
-        events_data = fetch_api_data("dashboard/recent-events", {"category": category})
-        if events_data and events_data.get('success'):
-            df = pd.DataFrame(events_data['data'])
-            if not df.empty:
-                st.dataframe(df, use_container_width=True)
-            else:
-                st.info("최근 이벤트가 없습니다.")
-    else:
-        st.error("대시보드 데이터를 불러올 수 없습니다.")
+    if selected != st.session_state.selected_category:
+        st.session_state.selected_category = selected
+        st.rerun()
 
+# 메인 대시보드
+def dashboard_page():
+    """대시보드 페이지"""
+    # 페이지 헤더
+    st.markdown('<h1 class="main-header">📊 고객 분석 대시보드</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">실시간 고객 여정과 퍼널 분석을 통한 인사이트</p>', unsafe_allow_html=True)
+    
+    # 관리자 패널 토글
+    if st.button("🔧 관리자 패널"):
+        st.session_state.show_admin_panel = not st.session_state.show_admin_panel
+    
+    # 관리자 패널 표시
+    if st.session_state.show_admin_panel:
+        admin_panel()
+    
+    # 카테고리 선택
+    category_selector()
+    
+    # 데이터 로딩
+    with st.spinner("데이터를 불러오는 중..."):
+        # 모든 데이터 병렬로 가져오기
+        overview_data = fetch_api_data('dashboard/overview', {'category': st.session_state.selected_category})
+        funnel_data = fetch_api_data('dashboard/funnels', {'category': st.session_state.selected_category})
+        kpi_trends = fetch_api_data('dashboard/kpi-trends', {'category': st.session_state.selected_category})
+        recent_events = fetch_api_data('dashboard/recent-events', {'category': st.session_state.selected_category})
+        scenario_performance = fetch_api_data('dashboard/scenario-performance', {'category': st.session_state.selected_category})
+        category_metrics = fetch_api_data('dashboard/category-metrics', {'category': st.session_state.selected_category})
+    
+    # 데이터 검증
+    if not all([overview_data['success'], funnel_data['success'], kpi_trends['success'], 
+                recent_events['success'], scenario_performance['success'], category_metrics['success']]):
+        st.error("일부 데이터를 불러오는데 실패했습니다.")
+        return
+    
+    # 개요 메트릭
+    st.subheader("📈 핵심 지표")
+    overview = overview_data['data']
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        metric_card("총 사용자", f"{overview['total_users']:,}", "+12.5%")
+    with col2:
+        metric_card("총 세션", f"{overview['total_sessions']:,}", "+8.3%")
+    with col3:
+        metric_card("총 전환", f"{overview['total_conversions']:,}", "+15.2%")
+    with col4:
+        metric_card("평균 전환율", f"{overview['average_conversion_rate']}%", "+2.1%")
+    
+    # 카테고리별 추가 메트릭
+    if st.session_state.selected_category == 'ecommerce' and 'total_revenue' in overview:
+        st.subheader("💰 E-commerce 추가 지표")
+        col1, col2 = st.columns(2)
+        with col1:
+            metric_card("총 매출", f"₩{overview['total_revenue']:,}", "+18.5%")
+        with col2:
+            metric_card("평균 주문 금액", f"₩{overview['average_order_value']:,}", "+5.2%")
+    
+    elif st.session_state.selected_category == 'lead_generation' and 'total_leads' in overview:
+        st.subheader("🎯 리드 생성 추가 지표")
+        col1, col2 = st.columns(2)
+        with col1:
+            metric_card("총 리드", f"{overview['total_leads']:,}", "+22.1%")
+        with col2:
+            metric_card("리드 전환율", f"{overview['lead_conversion_rate']}%", "+3.8%")
+    
+    elif st.session_state.selected_category == 'general_website' and 'total_page_views' in overview:
+        st.subheader("🌐 웹사이트 추가 지표")
+        col1, col2 = st.columns(2)
+        with col1:
+            metric_card("총 페이지뷰", f"{overview['total_page_views']:,}", "+12.3%")
+        with col2:
+            metric_card("순 방문자", f"{overview.get('unique_visitors', 0):,}", "+8.7%")
+    
+    # 차트 섹션
+    st.subheader("📊 분석 차트")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.plotly_chart(create_funnel_chart(funnel_data['data']), use_container_width=True)
+    
+    with col2:
+        st.plotly_chart(create_kpi_trend_chart(kpi_trends['data']), use_container_width=True)
+    
+    # 시나리오 비교 및 최근 이벤트
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.plotly_chart(create_scenario_comparison_chart(scenario_performance['data']), use_container_width=True)
+    
+    with col2:
+        st.subheader("📋 최근 사용자 이벤트")
+        events_df = pd.DataFrame(recent_events['data'])
+        if not events_df.empty:
+            events_df['timestamp'] = pd.to_datetime(events_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M')
+            st.dataframe(
+                events_df[['user_id', 'event_type', 'timestamp']].head(10),
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("최근 이벤트가 없습니다.")
+
+# KPI 분석 페이지
 def kpi_analytics_page():
     """KPI 분석 페이지"""
     st.markdown('<h1 class="main-header">📈 KPI 분석</h1>', unsafe_allow_html=True)
     
-    # KPI 데이터 (임시)
-    kpi_data = [
-        {
-            "name": "전환율",
-            "category": "conversion",
-            "current_value": 12.5,
-            "target_value": 15.0,
-            "unit": "%",
-            "trend": [10.2, 11.1, 12.3, 11.8, 13.2, 12.5],
-            "dates": ['2025-08-01', '2025-08-02', '2025-08-03', '2025-08-04', '2025-08-05', '2025-08-06'],
-            "journeyStage": "결정 단계",
-            "impact": "high",
-            "description": "고객이 구매 결정을 내리고 실제 결제를 완료하는 비율",
-            "improvement": "결제 프로세스 최적화, 장바구니 이탈률 감소"
-        },
-        {
-            "name": "평균 체류시간",
-            "category": "engagement",
-            "current_value": 180,
-            "target_value": 200,
-            "unit": "초",
-            "trend": [165, 172, 185, 178, 190, 180],
-            "dates": ['2025-08-01', '2025-08-02', '2025-08-03', '2025-08-04', '2025-08-05', '2025-08-06'],
-            "journeyStage": "고려 단계",
-            "impact": "medium",
-            "description": "고객이 제품 정보를 탐색하고 비교하는 시간",
-            "improvement": "콘텐츠 품질 향상, 사용자 경험 개선"
-        },
-        {
-            "name": "재방문율",
-            "category": "retention",
-            "current_value": 28.5,
-            "target_value": 30.0,
-            "unit": "%",
-            "trend": [25.2, 26.8, 27.5, 28.1, 29.2, 28.5],
-            "dates": ['2025-08-01', '2025-08-02', '2025-08-03', '2025-08-04', '2025-08-05', '2025-08-06'],
-            "journeyStage": "유지 단계",
-            "impact": "high",
-            "description": "기존 고객이 다시 방문하는 비율",
-            "improvement": "로열티 프로그램 강화, 개인화 서비스 제공"
-        }
-    ]
+    # KPI 트렌드 데이터 가져오기
+    kpi_data = fetch_api_data('dashboard/kpi-trends', {'category': st.session_state.selected_category})
     
-    # 카테고리 필터
-    categories = ["all"] + list(set([kpi["category"] for kpi in kpi_data]))
-    selected_category = st.selectbox(
-        "카테고리 선택",
-        categories,
-        index=0,
-        format_func=lambda x: {
-            "all": "전체",
-            "conversion": "전환",
-            "engagement": "참여도",
-            "retention": "유지"
-        }.get(x, x)
-    )
-    
-    # KPI 필터링
-    filtered_kpis = kpi_data if selected_category == "all" else [kpi for kpi in kpi_data if kpi["category"] == selected_category]
-    
-    # KPI 카드들
-    for kpi in filtered_kpis:
-        with st.expander(f"📊 {kpi['name']} - {kpi['journeyStage']}"):
-            col1, col2 = st.columns([2, 1])
-            
-            with col1:
-                # KPI 값과 목표
-                st.metric(
-                    label=kpi['name'],
-                    value=f"{kpi['current_value']}{kpi['unit']}",
-                    delta=f"{kpi['current_value'] - kpi['target_value']:+.1f}{kpi['unit']}"
-                )
-                
-                # 설명
-                st.write(f"**설명:** {kpi['description']}")
-                st.write(f"**개선 방안:** {kpi['improvement']}")
-            
-            with col2:
-                # 트렌드 차트
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=kpi['dates'],
-                    y=kpi['trend'],
-                    mode='lines+markers',
-                    name=kpi['name']
-                ))
-                fig.update_layout(
-                    title=f"{kpi['name']} 트렌드",
-                    height=200,
-                    showlegend=False
-                )
-                st.plotly_chart(fig, use_container_width=True)
-    
-    # 여정 맵 토글
-    if st.button("🗺️ 여정 맵 보기/숨기기"):
-        st.session_state.show_journey_map = not st.session_state.show_journey_map
-    
-    # 여정 맵 표시
-    if st.session_state.show_journey_map:
-        st.subheader("🗺️ 고객 여정 맵 미니 버전")
-        fig = create_customer_journey_map()
-        if fig:
-            st.plotly_chart(fig, use_container_width=True)
+    if kpi_data['success']:
+        st.plotly_chart(create_kpi_trend_chart(kpi_data['data']), use_container_width=True)
+        
+        # KPI 상세 분석
+        st.subheader("📊 KPI 상세 분석")
+        df = pd.DataFrame(kpi_data['data'])
+        df['date'] = pd.to_datetime(df['date'])
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("평균 전환율", f"{df['value'].mean():.1f}%")
+        with col2:
+            st.metric("최고 전환율", f"{df['value'].max():.1f}%")
+        with col3:
+            st.metric("최저 전환율", f"{df['value'].min():.1f}%")
+    else:
+        st.error("KPI 데이터를 불러오는데 실패했습니다.")
 
+# 고객 여정 맵 페이지
 def customer_journey_page():
     """고객 여정 맵 페이지"""
     st.markdown('<h1 class="main-header">🗺️ 고객 여정 맵</h1>', unsafe_allow_html=True)
     
-    # 필터 옵션
-    col1, col2, col3 = st.columns(3)
+    # 퍼널 데이터 가져오기
+    funnel_data = fetch_api_data('dashboard/funnels', {'category': st.session_state.selected_category})
     
-    with col1:
-        categories = ["all", "lead_generation", "product_development", "customer_service", "marketing"]
-        selected_category = st.selectbox(
-            "카테고리 선택",
-            categories,
-            index=0,
-            format_func=lambda x: {
-                "all": "전체",
-                "lead_generation": "리드 생성",
-                "product_development": "제품 개발",
-                "customer_service": "고객 서비스",
-                "marketing": "마케팅"
-            }[x]
-        )
-    
-    with col2:
-        start_date = st.date_input(
-            "시작일",
-            value=datetime.now() - timedelta(days=30)
-        )
-    
-    with col3:
-        end_date = st.date_input(
-            "종료일",
-            value=datetime.now()
-        )
-    
-    # 선택된 필터 정보 표시
-    st.info(f"선택된 카테고리: {selected_category}, 기간: {start_date} ~ {end_date}")
-    
-    # 여정 맵 표시
-    fig = create_customer_journey_map()
-    if fig:
-        st.plotly_chart(fig, use_container_width=True)
-    
-    # 감정 변화 차트
-    st.subheader("📊 감정 변화 분석")
-    
-    emotions_data = {
-        "인지": {"긍정": 65, "중립": 25, "부정": 10},
-        "관심": {"긍정": 70, "중립": 20, "부정": 10},
-        "고려": {"긍정": 55, "중립": 30, "부정": 15},
-        "결정": {"긍정": 80, "중립": 15, "부정": 5},
-        "유지": {"긍정": 75, "중립": 20, "부정": 5}
-    }
-    
-    fig = go.Figure()
-    
-    for stage, emotions in emotions_data.items():
-        fig.add_trace(go.Bar(
-            name=stage,
-            x=list(emotions.keys()),
-            y=list(emotions.values()),
-            text=list(emotions.values()),
-            textposition='auto'
-        ))
-    
-    fig.update_layout(
-        title="여정 단계별 감정 분포",
-        barmode='group',
-        height=400
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
+    if funnel_data['success']:
+        st.plotly_chart(create_funnel_chart(funnel_data['data']), use_container_width=True)
+        
+        # 여정 단계별 상세 분석
+        st.subheader("📋 여정 단계별 분석")
+        df = pd.DataFrame(funnel_data['data'])
+        
+        # 전환율 계산
+        df['conversion_rate'] = (df['users_reached'] / df['users_reached'].iloc[0] * 100).round(1)
+        df['drop_off_rate'] = (100 - df['conversion_rate']).round(1)
+        
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        st.error("퍼널 데이터를 불러오는데 실패했습니다.")
 
+# 설정 페이지
 def settings_page():
     """설정 페이지"""
     st.markdown('<h1 class="main-header">⚙️ 설정</h1>', unsafe_allow_html=True)
     
-    # 탭 생성
-    tab1, tab2, tab3, tab4 = st.tabs(["일반 설정", "데이터 처리", "알림 설정", "보안 설정"])
+    st.subheader("🔧 시스템 설정")
     
-    with tab1:
-        st.subheader("일반 설정")
-        
-        # 자동 새로고침
-        auto_refresh = st.checkbox("자동 새로고침 활성화", value=True)
-        if auto_refresh:
-            refresh_interval = st.slider("새로고침 간격 (초)", 30, 300, 60)
-        
-        # 테마 설정
-        theme = st.selectbox("테마", ["라이트", "다크"])
-        
-        # 언어 설정
-        language = st.selectbox("언어", ["한국어", "English"])
+    col1, col2 = st.columns(2)
     
-    with tab2:
-        st.subheader("데이터 처리 설정")
+    with col1:
+        st.subheader("📊 데이터 설정")
+        refresh_interval = st.selectbox("새로고침 간격", ["1분", "5분", "10분", "30분"], index=1)
+        auto_refresh = st.checkbox("자동 새로고침", value=True)
         
-        # 데이터 보관 기간
-        retention_days = st.number_input("데이터 보관 기간 (일)", 30, 365, 90)
-        
-        # 실시간 처리
-        real_time_processing = st.checkbox("실시간 데이터 처리", value=True)
-        
-        # 배치 처리
-        batch_processing = st.checkbox("배치 처리 활성화", value=False)
+        st.subheader("🎨 UI 설정")
+        theme = st.selectbox("테마", ["라이트", "다크"], index=0)
+        language = st.selectbox("언어", ["한국어", "English"], index=0)
     
-    with tab3:
-        st.subheader("알림 설정")
-        
-        # 이메일 알림
+    with col2:
+        st.subheader("🔔 알림 설정")
         email_notifications = st.checkbox("이메일 알림", value=False)
-        if email_notifications:
-            email = st.text_input("이메일 주소")
+        slack_notifications = st.checkbox("Slack 알림", value=False)
         
-        # 웹훅 알림
-        webhook_notifications = st.checkbox("웹훅 알림", value=False)
-        if webhook_notifications:
-            webhook_url = st.text_input("웹훅 URL")
+        st.subheader("📈 차트 설정")
+        chart_animation = st.checkbox("차트 애니메이션", value=True)
+        show_data_labels = st.checkbox("데이터 라벨 표시", value=True)
     
-    with tab4:
-        st.subheader("보안 설정")
-        
-        # API 키 관리
-        st.write("API 키 관리")
-        api_key = st.text_input("API 키", type="password")
-        
-        # 접근 권한
-        access_level = st.selectbox("접근 권한", ["읽기 전용", "읽기/쓰기", "관리자"])
-    
-    # 설정 저장
-    if st.button("설정 저장"):
+    if st.button("💾 설정 저장"):
         st.success("설정이 저장되었습니다!")
 
+# 사이드바
+def sidebar():
+    """사이드바"""
+    st.sidebar.title("🎯 고객 분석 시스템")
+    
+    # 시스템 상태 표시
+    if is_local:
+        st.sidebar.success("🖥️ 로컬 환경")
+        st.sidebar.info("🔗 실제 API 연결")
+    else:
+        st.sidebar.success("☁️ Streamlit Cloud 모드")
+        st.sidebar.info("🔄 모의 데이터 사용 중")
+    
+    st.sidebar.markdown("---")
+    
+    # 네비게이션
+    page = st.sidebar.selectbox(
+        "페이지 선택",
+        ["📊 대시보드", "📈 KPI 분석", "🗺️ 고객 여정 맵", "⚙️ 설정"]
+    )
+    
+    st.sidebar.markdown("---")
+    
+    # 카테고리 선택
+    st.sidebar.subheader("📂 카테고리")
+    categories = {
+        'all': '전체',
+        'ecommerce': 'E-commerce',
+        'lead_generation': '잠재고객 확보',
+        'general_website': '일반 웹사이트'
+    }
+    
+    selected_category = st.sidebar.selectbox(
+        "카테고리 선택",
+        options=list(categories.keys()),
+        format_func=lambda x: categories[x],
+        index=list(categories.keys()).index(st.session_state.selected_category)
+    )
+    
+    if selected_category != st.session_state.selected_category:
+        st.session_state.selected_category = selected_category
+        st.rerun()
+    
+    st.sidebar.markdown("---")
+    
+    # 시스템 정보
+    st.sidebar.subheader("ℹ️ 시스템 정보")
+    st.sidebar.text(f"마지막 업데이트:")
+    st.sidebar.text(f"{st.session_state.last_refresh.strftime('%H:%M:%S')}")
+    
+    if st.sidebar.button("🔄 새로고침"):
+        st.session_state.last_refresh = datetime.now()
+        st.rerun()
+    
+    return page
+
+# 메인 함수
 def main():
     """메인 함수"""
-    # 사이드바 네비게이션
-    with st.sidebar:
-        st.title("📊 고객 분석 시스템")
-        
-        selected = option_menu(
-            "메뉴",
-            ["대시보드", "KPI 분석", "고객 여정 맵", "설정"],
-            icons=['house', 'graph-up', 'map', 'gear'],
-            menu_icon="cast",
-            default_index=0,
-        )
-        
-        st.markdown("---")
-        st.markdown("### 시스템 상태")
-        
-        # 시스템 상태 표시
-        if is_local:
-            st.success("🖥️ 로컬 환경")
-            st.info("🔗 실제 API 연결")
-        else:
-            st.success("☁️ Streamlit Cloud 모드")
-            st.info("🔄 모의 데이터 사용 중")
-        
-        st.markdown("---")
-        st.markdown("### 빠른 액션")
-        
-        if st.button("🔄 새로고침"):
-            st.rerun()
-        
-        if st.button("📊 데이터 업데이트"):
-            st.info("데이터 업데이트 중...")
-            time.sleep(2)
-            st.success("데이터가 업데이트되었습니다!")
+    # 사이드바
+    page = sidebar()
     
     # 페이지 라우팅
-    if selected == "대시보드":
+    if page == "📊 대시보드":
         dashboard_page()
-    elif selected == "KPI 분석":
+    elif page == "📈 KPI 분석":
         kpi_analytics_page()
-    elif selected == "고객 여정 맵":
+    elif page == "🗺️ 고객 여정 맵":
         customer_journey_page()
-    elif selected == "설정":
+    elif page == "⚙️ 설정":
         settings_page()
 
 if __name__ == "__main__":
