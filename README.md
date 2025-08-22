@@ -1,331 +1,266 @@
-# 고객 행동 데이터 분석 시스템
+# 고객 분석 시스템 (Customer Analytics System)
 
-실시간 고객 여정 분석과 퍼널 추적을 위한 종합적인 분석 시스템입니다.
-
-## 🌟 주요 기능
-
-- **실시간 대시보드**: 고객 행동 데이터의 실시간 모니터링
-- **퍼널 분석**: 고객 여정 단계별 전환율 분석
-- **KPI 추적**: 핵심 성과 지표의 트렌드 분석
-- **고객 여정 맵**: 시각적 고객 여정 단계 분석
-- **카테고리별 분류**: 리드 생성, 제품 개발, 고객 서비스, 마케팅별 분석
-- **날짜 범위 필터링**: 기간별 데이터 분석
+실시간 고객 여정 분석과 퍼널 분석을 통한 인사이트 제공 시스템
 
 ## 🚀 빠른 시작
 
 ### 듀얼 시스템 (React + Streamlit) - 로컬 환경
 
-**모든 서비스를 한 번에 시작하는 가장 쉬운 방법:**
-
 ```bash
-# 시스템 시작
+# 모든 서비스 시작 (Backend + React + Streamlit)
 ./start-dual.sh
 
-# 시스템 중지
-./stop-dual.sh
-
-# 상태 확인
+# 서비스 상태 확인
 ./status-dual.sh
+
+# 모든 서비스 중지
+./stop-dual.sh
 ```
 
 **접속 정보:**
-- 📊 **React 대시보드**: http://localhost:8100
-- 🐍 **Streamlit 앱**: http://localhost:8501
-- 🔌 **백엔드 API**: http://localhost:3001
+- **React 앱**: http://localhost:8100
+- **Streamlit 앱**: http://localhost:8501
+- **Backend API**: http://localhost:3001
 
-### Streamlit Cloud 배포 (권장)
+## 🌐 React 데모 웹 배포
 
-1. **GitHub 저장소 클론**
-   ```bash
-   git clone https://github.com/your-username/customer-analytics-system.git
-   cd customer-analytics-system
-   ```
+React로 만든 페이지를 웹에서 데모로 활용할 수 있는 다양한 배포 방법을 제공합니다.
 
-2. **Streamlit Cloud에서 배포**
-   - [Streamlit Cloud](https://share.streamlit.io/)에 접속
-   - GitHub 계정으로 로그인
-   - "New app" 클릭
-   - 저장소 선택: `customer-analytics-system`
-   - Main file path: `app.py`
-   - Deploy 클릭
-
-3. **접속**
-   - 배포 완료 후 제공되는 URL로 접속
-
-### 로컬 개발 환경
-
-#### Docker 사용 (권장)
+### 🎯 자동 배포 스크립트
 
 ```bash
-# 전체 시스템 시작
-./start.sh
-
-# 개발 모드 시작
-./start-dev.sh
+# 배포 스크립트 실행
+./deploy-react-demo.sh
 ```
 
-#### 로컬 환경 설정
+### 📋 배포 옵션
 
-1. **백엔드 설정**
-   ```bash
-   cd backend
-   npm install
-   npm start
-   ```
+#### 1. **Vercel 배포 (추천)**
+- **장점**: 무료, 자동 배포, 빠른 속도
+- **URL**: `https://your-app.vercel.app`
+- **설정**: `vercel.json` 파일 사용
 
-2. **프론트엔드 설정**
-   ```bash
-   cd frontend
-   npm install
-   npm start
-   ```
+```bash
+# Vercel CLI 설치
+npm install -g vercel
 
-3. **Streamlit 앱 설정**
-   ```bash
-   cd streamlit
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   streamlit run app.py
-   ```
+# 배포
+cd frontend
+vercel --prod
+```
 
-## 📊 사용 방법
+#### 2. **Netlify 배포**
+- **장점**: 무료, 자동 배포, 폼 처리
+- **URL**: `https://your-app.netlify.app`
+- **설정**: `netlify.toml` 파일 사용
 
-### 듀얼 시스템 사용법
+```bash
+# Netlify CLI 설치
+npm install -g netlify-cli
 
-1. **시스템 시작**
-   ```bash
-   ./start-dual.sh
-   ```
+# 배포
+cd frontend
+netlify deploy --prod --dir=build
+```
 
-2. **대시보드 접속**
-   - **React 버전**: http://localhost:8100 (고급 UI/UX)
-   - **Streamlit 버전**: http://localhost:8501 (빠른 분석)
+#### 3. **GitHub Pages 배포**
+- **장점**: 무료, GitHub 연동
+- **URL**: `https://username.github.io/repository-name`
+- **설정**: 자동으로 `gh-pages` 브랜치 생성
 
-3. **데이터 생성**
-   - 관리자 패널에서 시나리오 선택
-   - 이벤트 기록 또는 모의 데이터 생성
+```bash
+cd frontend
+npm install --save-dev gh-pages
+npm run deploy
+```
 
-4. **분석 확인**
-   - 실시간으로 대시보드 데이터 확인
-   - 카테고리별 필터링 사용
-   - 날짜 범위 설정
+#### 4. **Docker 배포**
+- **장점**: 컨테이너화, 확장성
+- **URL**: `http://localhost:8080`
+- **설정**: `Dockerfile` 사용
 
-### React vs Streamlit 비교
+```bash
+cd frontend
+docker build -t customer-analytics-frontend .
+docker run -d -p 8080:80 customer-analytics-frontend
+```
+
+#### 5. **로컬 데모 서버**
+- **장점**: 빠른 테스트, 오프라인 사용
+- **URL**: `http://localhost:8080`
+
+```bash
+cd frontend
+npm install -g serve
+npm run build
+serve -s build -l 8080
+```
+
+### 🔧 수동 배포 단계
+
+#### **1단계: React 앱 빌드**
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+#### **2단계: 배포 플랫폼 선택**
+
+**Vercel (추천):**
+1. [Vercel](https://vercel.com) 가입
+2. GitHub 저장소 연결
+3. 자동 배포 활성화
+
+**Netlify:**
+1. [Netlify](https://netlify.com) 가입
+2. GitHub 저장소 연결
+3. 빌드 설정: `npm run build`
+4. 배포 디렉토리: `build`
+
+**GitHub Pages:**
+1. 저장소 설정 → Pages
+2. Source: `gh-pages` 브랜치
+3. 자동 배포 활성화
+
+### 🌍 환경 변수 설정
+
+배포 시 다음 환경 변수를 설정하세요:
+
+```bash
+REACT_APP_API_URL=https://your-backend-url.com/api
+REACT_APP_ENVIRONMENT=production
+```
+
+### 📱 반응형 디자인
+
+React 앱은 모든 디바이스에서 최적화되어 있습니다:
+- **데스크톱**: 1920px 이상
+- **태블릿**: 768px - 1024px
+- **모바일**: 320px - 767px
+
+### 🎨 디자인 시스템
+
+- **색상**: Tailwind CSS 기반
+- **아이콘**: Heroicons
+- **차트**: Chart.js
+- **UI 컴포넌트**: Headless UI
+
+## ☁️ Streamlit Cloud 배포
+
+### 자동 배포 (GitHub Actions)
+
+```bash
+# 코드 푸시 시 자동 배포
+git add .
+git commit -m "Update app"
+git push origin main
+```
+
+### 수동 배포
+
+1. [Streamlit Cloud](https://share.streamlit.io) 접속
+2. GitHub 저장소 연결
+3. 메인 파일: `app.py`
+4. 배포
+
+**URL**: `https://share.streamlit.io/username/repository-name/main/app.py`
+
+## 📊 기능 비교
 
 | 기능 | React 버전 | Streamlit 버전 |
 |------|------------|----------------|
-| **UI/UX** | 고급 인터페이스, 반응형 디자인 | 간단하고 직관적 |
-| **실시간 업데이트** | ✅ WebSocket 지원 | ✅ 자동 새로고침 |
-| **복잡한 인터랙션** | ✅ 드래그 앤 드롭, 애니메이션 | ⚠️ 기본 인터랙션 |
-| **관리자 패널** | ✅ 완전한 관리 기능 | ⚠️ 제한적 |
-| **데이터 분석** | ✅ 고급 차트, 필터링 | ✅ 빠른 프로토타이핑 |
-| **배포** | ⚠️ 복잡한 설정 | ✅ 클라우드 배포 용이 |
-| **개발 속도** | ⚠️ 느림 | ✅ 빠름 |
+| 대시보드 | ✅ 완전 구현 | ✅ 완전 구현 |
+| KPI 분석 | ✅ 완전 구현 | ✅ 완전 구현 |
+| 고객 여정 맵 | ✅ 완전 구현 | ✅ 완전 구현 |
+| 설정 페이지 | ✅ 완전 구현 | ✅ 완전 구현 |
+| 반응형 디자인 | ✅ 최적화 | ✅ 최적화 |
+| 실시간 데이터 | ✅ API 연동 | ✅ 모의 데이터 |
+| 배포 난이도 | 중간 | 쉬움 |
+| 커스터마이징 | 높음 | 중간 |
 
-### 사용 시나리오
+## 🎯 사용 시나리오
 
-- **React 버전**: 고객용 대시보드, 복잡한 분석, 프로덕션 환경
-- **Streamlit 버전**: 내부 분석, 빠른 인사이트, 프로토타이핑
+### React 버전 사용 시기:
+- **고객 데모**: 전문적인 외관 필요
+- **프로덕션 환경**: 실제 API 연동
+- **복잡한 인터랙션**: 고급 UI/UX 필요
+- **성능 최적화**: 빠른 로딩 속도 필요
 
-## 🏗️ 프로젝트 구조
-
-```
-customer-analytics-system/
-├── backend/                 # Node.js + Express 백엔드
-│   ├── src/
-│   │   ├── controllers/     # API 컨트롤러
-│   │   ├── routes/         # API 라우트
-│   │   ├── models/         # 데이터 모델
-│   │   └── services/       # 비즈니스 로직
-│   └── package.json
-├── frontend/               # React + TypeScript 프론트엔드
-│   ├── src/
-│   │   ├── components/     # React 컴포넌트
-│   │   ├── services/       # API 서비스
-│   │   └── types/         # TypeScript 타입 정의
-│   └── package.json
-├── streamlit/              # Streamlit 앱
-│   ├── app.py             # 메인 Streamlit 앱
-│   └── requirements.txt   # Python 의존성
-├── database/              # 데이터베이스 스키마
-├── docker/               # Docker 설정
-├── app.py                # Streamlit Cloud용 메인 파일
-├── requirements.txt      # Streamlit Cloud용 의존성
-├── start-dual.sh         # 듀얼 시스템 시작 스크립트
-├── stop-dual.sh          # 듀얼 시스템 중지 스크립트
-├── status-dual.sh        # 시스템 상태 확인 스크립트
-├── logs/                 # 로그 파일 디렉토리
-└── README.md
-```
-
-## 🔌 API 엔드포인트
-
-### 대시보드 API
-- `GET /api/dashboard/overview` - 대시보드 개요 데이터
-- `GET /api/dashboard/funnels` - 퍼널 분석 데이터
-- `GET /api/dashboard/kpi-trends` - KPI 트렌드 데이터
-- `GET /api/dashboard/recent-events` - 최근 이벤트 데이터
-
-### 이벤트 API
-- `POST /api/events` - 이벤트 생성
-- `GET /api/events` - 이벤트 조회
-
-### 시나리오 API
-- `GET /api/scenarios` - 시나리오 목록
-- `POST /api/scenarios` - 시나리오 생성
+### Streamlit 버전 사용 시기:
+- **빠른 프로토타이핑**: 신속한 개발
+- **데이터 분석**: Python 기반 분석
+- **내부 도구**: 팀 내부 사용
+- **간단한 배포**: 클릭 한 번으로 배포
 
 ## 🛠️ 기술 스택
 
-### 백엔드
+### Backend
 - **Node.js** + **Express**
 - **TypeScript**
-- **PostgreSQL** (데이터베이스)
-- **Redis** (캐싱)
+- **PostgreSQL** + **Redis**
+- **Docker**
 
-### 프론트엔드
+### Frontend (React)
 - **React 18** + **TypeScript**
-- **Tailwind CSS** (스타일링)
-- **Chart.js** (차트 라이브러리)
-- **Axios** (HTTP 클라이언트)
+- **Tailwind CSS**
+- **Chart.js** + **react-chartjs-2**
+- **React Router DOM**
+- **Axios**
 
-### Streamlit
+### Frontend (Streamlit)
 - **Python 3.13**
-- **Streamlit** (웹 앱 프레임워크)
-- **Plotly** (인터랙티브 차트)
-- **Pandas** (데이터 처리)
+- **Streamlit**
+- **Plotly**
+- **Pandas**
 
-### 인프라
-- **Docker** & **Docker Compose**
-- **Nginx** (리버스 프록시)
+## 📁 프로젝트 구조
 
-## 📈 실제 사용 시나리오
-
-### 1. 이커머스 고객 분석
-- **시나리오**: 온라인 쇼핑몰 고객 여정
-- **단계**: 홈페이지 방문 → 상품 탐색 → 장바구니 추가 → 결제 완료
-- **분석**: 각 단계별 이탈률과 전환율 분석
-
-### 2. SaaS 제품 온보딩
-- **시나리오**: 신규 사용자 온보딩 프로세스
-- **단계**: 회원가입 → 이메일 인증 → 튜토리얼 → 첫 사용
-- **분석**: 온보딩 완료율과 사용자 활성화 지표
-
-### 3. 마케팅 캠페인 효과
-- **시나리오**: 이메일 마케팅 캠페인
-- **단계**: 이메일 발송 → 이메일 열람 → 링크 클릭 → 전환
-- **분석**: 캠페인별 성과와 ROI 분석
-
-## 🔧 개발 환경 설정
-
-### 필수 요구사항
-- Node.js 18+
-- Python 3.11+
-- Docker & Docker Compose
-- PostgreSQL 14+
-- Redis 6+
-
-### 환경 변수 설정
-```bash
-# .env 파일 생성
-cp .env.example .env
-
-# 환경 변수 설정
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=customer_analytics
-DB_USER=postgres
-DB_PASSWORD=your_password
-REDIS_URL=redis://localhost:6379
+```
+customer-analytics-system/
+├── backend/                 # Node.js API 서버
+├── frontend/               # React 앱
+├── streamlit/              # Streamlit 앱
+├── database/               # 데이터베이스 스키마
+├── docker/                 # Docker 설정
+├── docs/                   # 문서
+├── app.py                  # Streamlit 메인 앱
+├── requirements.txt        # Python 의존성
+├── vercel.json            # Vercel 배포 설정
+├── netlify.toml           # Netlify 배포 설정
+├── deploy-react-demo.sh   # React 배포 스크립트
+├── start-dual.sh          # 듀얼 시스템 시작
+├── stop-dual.sh           # 듀얼 시스템 중지
+└── status-dual.sh         # 시스템 상태 확인
 ```
 
-## 🚀 배포
+## 🚀 배포 가이드
 
-### Streamlit Cloud 배포
-1. GitHub 저장소에 코드 푸시
-2. Streamlit Cloud에서 저장소 연결
-3. 자동 배포 완료
+### React 데모 배포
 
-### Docker 배포
-```bash
-# 프로덕션 빌드
-docker-compose -f docker-compose.prod.yml up -d
-
-# 개발 환경
-docker-compose up -d
-```
-
-## 📊 성능 최적화
-
-### 백엔드 최적화
-- Redis 캐싱 적용
-- 데이터베이스 인덱싱
-- API 응답 압축
-
-### 프론트엔드 최적화
-- 코드 스플리팅
-- 이미지 최적화
-- CDN 사용
-
-### 데이터베이스 최적화
-- 쿼리 최적화
-- 파티셔닝
-- 백업 전략
-
-## 🔒 보안 고려사항
-
-### API 보안
-- JWT 토큰 인증
-- Rate limiting
-- CORS 설정
-
-### 데이터 보안
-- 데이터 암호화
-- 접근 권한 관리
-- 감사 로그
-
-## 🐛 문제 해결
-
-### 일반적인 문제들
-
-1. **포트 충돌**
+1. **자동 배포 (추천)**:
    ```bash
-   # 사용 중인 포트 확인
-   lsof -i :3001
-   lsof -i :8100
-   lsof -i :8501
+   ./deploy-react-demo.sh
    ```
 
-2. **데이터베이스 연결 오류**
-   ```bash
-   # PostgreSQL 상태 확인
-   brew services list | grep postgresql
-   ```
+2. **수동 배포**:
+   - Vercel: `vercel --prod`
+   - Netlify: `netlify deploy --prod`
+   - GitHub Pages: `npm run deploy`
 
-3. **Docker 컨테이너 문제**
-   ```bash
-   # 컨테이너 로그 확인
-   docker-compose logs
-   ```
+### Streamlit 배포
 
-## 🤝 기여하기
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 `LICENSE` 파일을 참조하세요.
+1. **자동 배포**: GitHub 푸시 시 자동
+2. **수동 배포**: Streamlit Cloud에서 설정
 
 ## 📞 지원
 
-- **이슈 리포트**: [GitHub Issues](https://github.com/your-username/customer-analytics-system/issues)
-- **문서**: [Wiki](https://github.com/your-username/customer-analytics-system/wiki)
-- **이메일**: support@example.com
+문제가 발생하면 다음을 확인하세요:
 
----
+1. **로그 확인**: `./status-dual.sh`
+2. **포트 충돌**: 3001, 8100, 8501 포트 확인
+3. **의존성 설치**: `npm install` 및 `pip install -r requirements.txt`
 
-**고객 행동 데이터 분석 시스템** - 실시간 고객 여정 분석을 위한 강력한 도구 
+## 📄 라이선스
+
+MIT License 
