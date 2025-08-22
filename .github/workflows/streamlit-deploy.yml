@@ -1,0 +1,53 @@
+name: Deploy to Streamlit Cloud
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Test Streamlit app
+      run: |
+        python -c "import streamlit; print('Streamlit version:', streamlit.__version__)"
+        python -c "import app; print('App imported successfully')"
+    
+    - name: Deploy to Streamlit Cloud
+      env:
+        STREAMLIT_CLOUD: "true"
+      run: |
+        echo "Deployment configuration:"
+        echo "- Repository: ${{ github.repository }}"
+        echo "- Branch: ${{ github.ref_name }}"
+        echo "- Main file: app.py"
+        echo "- Environment: STREAMLIT_CLOUD=true"
+        
+        # 배포 정보 출력
+        echo "## Streamlit Cloud 배포 정보" >> $GITHUB_STEP_SUMMARY
+        echo "- **저장소**: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **브랜치**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **메인 파일**: app.py" >> $GITHUB_STEP_SUMMARY
+        echo "- **환경 변수**: STREAMLIT_CLOUD=true" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 배포 단계:" >> $GITHUB_STEP_SUMMARY
+        echo "1. [Streamlit Cloud](https://share.streamlit.io/)에 접속" >> $GITHUB_STEP_SUMMARY
+        echo "2. GitHub 계정으로 로그인" >> $GITHUB_STEP_SUMMARY
+        echo "3. 'New app' 클릭" >> $GITHUB_STEP_SUMMARY
+        echo "4. Repository: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+        echo "5. Main file path: app.py" >> $GITHUB_STEP_SUMMARY
+        echo "6. Deploy 클릭" >> $GITHUB_STEP_SUMMARY

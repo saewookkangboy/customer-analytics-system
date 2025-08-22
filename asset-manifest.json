@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/customer-analytics-system/static/css/main.d9825002.css",
+    "main.js": "/customer-analytics-system/static/js/main.99dbbe3f.js",
+    "static/js/453.670e15c7.chunk.js": "/customer-analytics-system/static/js/453.670e15c7.chunk.js",
+    "index.html": "/customer-analytics-system/index.html",
+    "main.d9825002.css.map": "/customer-analytics-system/static/css/main.d9825002.css.map",
+    "main.99dbbe3f.js.map": "/customer-analytics-system/static/js/main.99dbbe3f.js.map",
+    "453.670e15c7.chunk.js.map": "/customer-analytics-system/static/js/453.670e15c7.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.d9825002.css",
+    "static/js/main.99dbbe3f.js"
+  ]
+}
