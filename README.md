@@ -263,4 +263,8 @@ customer-analytics-system/
 
 ## 📄 라이선스
 
-MIT License 
+MIT License
+
+---
+
+**최신 업데이트**: GitHub Pages 자동 배포 설정 완료 (2024년 8월) 
